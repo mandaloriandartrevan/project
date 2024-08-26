@@ -1,0 +1,91 @@
+<!DOCTYPE html>  
+<html lang="ru">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>Клиент-серверное приложение</title>  
+    <script src="https://cdn.tailwindcss.com"></script>  
+    <script>  
+        async function sendActivity() {  
+            const response = await fetch('http://localhost:8888/send_activity', {  
+                method: 'POST',  
+                headers: {  
+                    'Content-Type': 'application/json'  
+                },  
+                body: JSON.stringify({ action: 'send_activity' })  
+            });  
+            const data = await response.text();  
+            console.log('Ответ сервера:', data);  
+            alert(data);  
+        }  
+
+        async function sendScreenshot() {  
+            try {  
+                const mediaStream = await navigator.mediaDevices.getDisplayMedia({  
+                    video: true  
+                });  
+                const canvas = document.createElement('canvas');  
+                const ctx = canvas.getContext('2d');  
+                canvas.width = 1920;  
+                canvas.height = 1080;  
+
+                const video = document.createElement('video');  
+                video.srcObject = mediaStream;  
+
+                await new Promise((resolve) => {  
+                    video.onloadedmetadata = () => {  
+                        video.play();  
+                        resolve();  
+                    };  
+                });  
+
+                setTimeout(() => {  
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);  
+                    canvas.toBlob(async (blob) => {  
+                        const imageData = await blob.arrayBuffer();  
+                        const response = await fetch('http://localhost:8888/send_screenshot', {  
+                            method: 'POST',  
+                            headers: {  
+                                'Content-Type': 'application/octet-stream'  
+                            },  
+                            body: imageData  
+                        });  
+                        const data = await response.text();  
+                        console.log('Ответ сервера:', data);  
+                        alert(data);  
+                    });  
+                }, 1000);  
+            } catch (err) {  
+                console.error('Ошибка при снятии скриншота:', err);  
+            }  
+        }  
+
+        async function fetchConnectedClients() {  
+            const response = await fetch('http://localhost:8889/clients');  
+            const clients = await response.json();  
+            const clientList = document.getElementById('client-list');  
+            clientList.innerHTML = ''; // Очищаем предыдущий список  
+
+            clients.forEach(client => {  
+                const listItem = document.createElement('li');  
+                listItem.textContent = `Домен/Компьютер: ${client.domain}, IP: ${client.ip}`;  
+                clientList.appendChild(listItem);  
+            });  
+        }  
+    </script>  
+</head>  
+<body class="bg-cover" style="background-image: url('https://www.funnyart.club/uploads/posts/2022-02/1644911075_1-www-funnyart-club-p-veb-fon-krasivo-1.jpg');">  
+    <div class="container mx-auto p-6 bg-white shadow-md rounded">  
+        <h1 class="text-3xl font-bold mb-4 text-left">Клиент-серверное приложение для мониторинга рабочей активности</h1>  
+        <div class="flex justify-center space-x-4 mb-6">  
+            <button onclick="sendActivity()" class="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-600 transition">Отправить Активность</button>  
+            <button onclick="sendScreenshot()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500 transition">Отправить Скриншот</button>  
+            <button onclick="fetchConnectedClients()" class="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-500 transition">Показать Подключенные Клиенты</button>  
+        </div>  
+        <h2 class="text-2xl font-semibold mb-2">Подключенные Клиенты:</h2>  
+        <ul id="client-list" class="list-disc list-inside bg-white p-4 rounded shadow-md">  
+            <!-- Список клиентов будет добавлен здесь -->  
+        </ul>  
+    </div>  
+</body>  
+</html>
